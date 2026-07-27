@@ -19,7 +19,7 @@ def exportparams():
     # res = subprocess.run(str_cmd)
     return [{"name": "Item Foo"}, {"name": "Item Bar"}]
 
-# 1. 小文件下载（推荐）
+# 1.结果文件下载，下载图片或者输出文档的
 @router.get("/export/{filename}")
 async def download_small(filename: str):
     file_path = f"./docs/{filename}"
