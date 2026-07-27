@@ -244,3 +244,4 @@ __marimo__/
 .streamlit/secrets.toml
 /testdata
 config.yaml
+/create_db

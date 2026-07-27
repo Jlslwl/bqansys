@@ -7,15 +7,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import File, UploadFile, Form, Request, Body
 from typing import Annotated
 from pathlib import Path
+from sqlalchemy.orm import sessionmaker
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
+from utils.save_file import save_file
 
 filename = os.path.dirname(os.path.dirname(__file__)) + '/config.yaml'
 
 # #####连接数据库#####
 import sqlalchemy
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.automap import automap_base
 import export
 import doansys
@@ -33,18 +34,14 @@ engine = sqlalchemy.create_engine(
     f"mysql+pymysql://{username}:{password}@{host}:{port}/{dataname}",
     pool_pre_ping=True,
 )
+Session = sessionmaker(bind=engine)
+Base = automap_base()
+Base.prepare(engine,reflect=True)
+Proparams = Base.classes.bpm_som_pro_param
 # 测试数据库连接
-try:
-    # 尝试获取连接
-    with engine.connect() as conn:
-        # 执行轻量级查询以验证连接活性
-        result = conn.execute(text("SELECT 1"))
-        print(result)
-        print("数据库连接成功！")
-except OperationalError as e:
-    print(f"数据库连接失败: {e}")
 ####################
 app = FastAPI()
+
 
 # 允许所有服务跨域访问
 app.add_middleware(
@@ -123,18 +120,28 @@ async def parsefile(request: dict = Body(...)):
         return [{'content': '解析错误'},]
 
 # 接收所有参数，可以然后保存到数据库
-@app.post('recparams')
+@app.post('receive_params')
 async def recparams(request: dict = Body(...)):
     data_list = request['changeParams']
     guid = request['guid']
+    usage = request['usage']
     # 文本 将文本 转为 utf-8 方便后续训练使用
-    with open('','rb'):
-        ...
+    raw_data, file_name = RAW_DATA_DICT[guid]
+    save_file(raw_data,file_name)
 
-    # with Session() as session:
-    #     # 将所有提取出的数据保存到数据库
-    #     ...
-    # # 清除内存中的字节流数据
+
+    with Session() as session:
+        for content_data in data_list:
+            guid = content_data.get('guid')
+            if guid:
+                # 如果存在，就是修改，加入(行，start，len)
+                ...
+            else:
+                # 如果不存在，就是新建数据 , 就是文件
+                ...
+
+    # 清除内存中的字节流数据
+    del RAW_DATA_DICT[guid]
     return {'status':200}
 
 
@@ -142,5 +149,4 @@ async def recparams(request: dict = Body(...)):
 
 if __name__ == '__main__':
     import uvicorn
-
     uvicorn.run('main:app', reload=True)
