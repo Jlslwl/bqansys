@@ -1,3 +1,5 @@
+import os
+import yaml
 import shutil
 from fastapi import FastAPI
 import sqlalchemy
@@ -5,6 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import File, UploadFile, Form, Request, Body
 from typing import Annotated
 from pathlib import Path
+
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+
+filename = os.path.dirname(os.path.dirname(__file__)) + '/config.yaml'
+
 # #####连接数据库#####
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
@@ -12,16 +20,29 @@ from sqlalchemy.ext.automap import automap_base
 import export
 import doansys
 
+with open(filename, 'r', encoding='utf-8') as f:
+    config = yaml.safe_load(f)
+    db_config = config['database']
 
-dataname = "mydatabase"
-host = '8.152.171.132'
-port = 9911
-username = 'WlAdmin'
-password = 'Jlslwl123#%40'
+dataname = db_config['dbname']
+host = db_config['host']
+port = db_config['port']
+username = db_config['username']
+password = db_config['password']
 engine = sqlalchemy.create_engine(
     f"mysql+pymysql://{username}:{password}@{host}:{port}/{dataname}",
     pool_pre_ping=True,
 )
+# 测试数据库连接
+try:
+    # 尝试获取连接
+    with engine.connect() as conn:
+        # 执行轻量级查询以验证连接活性
+        result = conn.execute(text("SELECT 1"))
+        print(result)
+        print("数据库连接成功！")
+except OperationalError as e:
+    print(f"数据库连接失败: {e}")
 ####################
 app = FastAPI()
 
@@ -99,7 +120,7 @@ async def parsefile(request: dict = Body(...)):
         return j_data
     except UnicodeError as exc:
         print(repr(exc))
-        return {'content': '解析错误'}
+        return [{'content': '解析错误'},]
 
 # 接收所有参数，可以然后保存到数据库
 @app.post('recparams')
@@ -110,10 +131,10 @@ async def recparams(request: dict = Body(...)):
     with open('','rb'):
         ...
 
-    with Session() as session:
-        # 将所有提取出的数据保存到数据库
-        ...
-    # 清除内存中的字节流数据
+    # with Session() as session:
+    #     # 将所有提取出的数据保存到数据库
+    #     ...
+    # # 清除内存中的字节流数据
     return {'status':200}
 
 
